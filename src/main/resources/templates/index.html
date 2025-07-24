@@ -1,24 +1,28 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>챗봇</title>
+    <title>챗봇 페이지</title>
     <link rel="stylesheet" th:href="@{/css/chatbot.css}" />
     <script th:src="@{/js/chatbot.js}" defer></script>
 </head>
 <body>
-<div class="chat-container">
-    <h1>챗봇 시스템</h1>
-    <p>행정 요청을 처리합니다</p>
 
-    <div class="chat-messages" id="chatMessages">
+<h1>패스트캠퍼스 행정 매뉴얼</h1>
+<p>패스트캠퍼스 행정 내용</p>
+
+<!-- 챗봇 토글 버튼 -->
+<button id="chatbot-toggle">🤖</button>
+
+<!-- 챗봇 팝업 창 -->
+<div id="chatbot-container">
+    <div id="chatbot-header">챗봇</div>
+    <div id="chatbot-messages"></div>
+    <div id="chatbot-input">
+        <input type="text" id="chatbot-input-field" placeholder="메시지를 입력하세요..." />
+        <button id="chatbot-send">전송</button>
     </div>
-
-    <form class="input-container" onsubmit="sendChat(event)">
-        <input type="text" id="msg" placeholder="메시지를 입력하세요..." required />
-        <button type="submit" id="sendBtn">전송</button>
-    </form>
 </div>
+
 </body>
 </html>
