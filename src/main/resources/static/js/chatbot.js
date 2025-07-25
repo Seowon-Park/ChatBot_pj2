@@ -56,6 +56,9 @@ document.addEventListener("DOMContentLoaded", function () {
         appendMessage(userInput, "user");
         inputField.value = "";
 
+        // 봇이 응답하는 동안 로딩 표시
+        showTypingIndicator();// 타이핑 애니메이션 시작
+
         //AI서버에 요청
         fetch("/chatbot", {
             method: "POST",
@@ -67,11 +70,41 @@ document.addEventListener("DOMContentLoaded", function () {
         })
             .then((res) => res.text())
             .then((response) => { //응답받음
+                hideTypingIndicator(); //타이핑 애니메이션 제거
                 appendMessage(response || "응답이 없습니다.", "bot");
             })
             .catch((err) => {//에러
+                hideTypingIndicator();//타이핑애니메이션 제거
                 appendMessage("에러 발생", "bot");
                 console.error(err);
             });
+    }
+
+    // 타이핑 인디케이터 표시
+    function showTypingIndicator() {
+        const typingContainer = document.createElement("div");
+        typingContainer.className = "message-container bot";
+        typingContainer.id = "typing-indicator";
+
+        const typingBox = document.createElement("div");
+        typingBox.className = "message bot typing";
+        typingBox.innerHTML = `
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        `;
+
+        typingContainer.appendChild(typingBox);
+        messages.appendChild(typingContainer);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+        const typingIndicator = document.getElementById("typing-indicator");
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
     }
 });
