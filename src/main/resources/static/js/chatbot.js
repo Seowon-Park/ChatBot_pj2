@@ -35,43 +35,79 @@ document.addEventListener("DOMContentLoaded", function () {
         if (e.key === "Enter") sendMessage();
     });
 
-    function appendMessage(text, sender) {
+    function appendMessage(text, sender, isIntermediate = false, isThinking = false) {
         const messageContainer = document.createElement("div");
         messageContainer.className = `message-container ${sender}`;
 
         const messageBox = document.createElement("div");
         messageBox.className = `message ${sender}`;
+
+        if (isIntermediate) {
+            messageBox.classList.add('intermediate-message'); // 중간 메시지 스타일링용 클래스
+        }
+        if (isThinking) {
+            messageBox.classList.add('thinking-message'); // 로딩 메시지 스타일링용 클래스
+        }
+
         messageBox.textContent = text;
 
         messageContainer.appendChild(messageBox);
         messages.appendChild(messageContainer);
         messages.scrollTop = messages.scrollHeight;
+        return messageBox; // 로딩 메시지 제거를 위해 반환
     }
 
     //AI서버 응답 받는 함수
-    function sendMessage() {
+    async function sendMessage() { // async 키워드 추가
         const userInput = inputField.value.trim();
-        if (!userInput) return;
+        if (!userInput) {
+            return;
+        }
 
         appendMessage(userInput, "user");
         inputField.value = "";
 
-        //AI서버에 요청
-        fetch("/chatbot", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-Session-ID": sessionId
-            },
-            body: JSON.stringify({ message: userInput }),
-        })
-            .then((res) => res.text())
-            .then((response) => { //응답받음
-                appendMessage(response || "응답이 없습니다.", "bot");
-            })
-            .catch((err) => {//에러
-                appendMessage("에러 발생", "bot");
-                console.error(err);
+        const thinkingMessage = appendMessage("답변을 생성 중입니다...", "bot", false, true); // 로딩 메시지임을 알림
+
+        try {
+            //AI서버에 요청
+            const res = await fetch("/chatbot", { // await 키워드 추가
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Session-ID": sessionId
+                },
+                body: JSON.stringify({ message: userInput }),
             });
+
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+
+            const data = await res.json(); // .json()으로 변경
+
+            // 로딩 메시지 제거
+            thinkingMessage.remove();
+
+            const intermediateMessages = data.intermediate_messages || [];
+            const finalResponse = data.response || "응답이 없습니다.";
+
+            // 중간 메시지들을 순차적으로 표시
+            for (const msg of intermediateMessages) {
+                appendMessage(msg, "bot", true); // 중간 메시지임을 true로 전달
+                await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초 지연 (조정 가능)
+            }
+
+            // 최종 답변 표시
+            appendMessage(finalResponse, "bot");
+
+        } catch (err) { // 에러 처리
+            // 로딩 메시지 제거
+            if (thinkingMessage && thinkingMessage.parentNode) {
+                thinkingMessage.remove();
+            }
+            appendMessage("답변 처리 중 오류가 발생했습니다.", "bot");
+            console.error('Fetch error:', err);
+        }
     }
 });
