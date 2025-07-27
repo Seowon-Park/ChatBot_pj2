@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     //AI서버 응답 받는 함수
-    async function sendMessage() { // async 키워드 추가
+    function sendMessage() { // async 키워드 추가
         const userInput = inputField.value.trim();
         if (!userInput) {
             return;
@@ -67,48 +67,59 @@ document.addEventListener("DOMContentLoaded", function () {
 
         appendMessage(userInput, "user");
         inputField.value = "";
+        // 봇이 응답하는 동안 로딩 표시
+        showTypingIndicator();// 타이핑 애니메이션 시작
 
-        const thinkingMessage = appendMessage("답변을 생성 중입니다...", "bot", false, true); // 로딩 메시지임을 알림
+        //AI서버에 요청
+        fetch("/chatbot", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Session-ID": sessionId
+            },
+            body: JSON.stringify({message: userInput}),
+        })
+            .then((res) => res.text())
+            .then(async (data) => {
+                const intermediateMessages = data.intermediate_messages || [];
+                const finalResponse = data.response || "응답이 없습니다.";
 
-        try {
-            //AI서버에 요청
-            const res = await fetch("/chatbot", { // await 키워드 추가
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Session-ID": sessionId
-                },
-                body: JSON.stringify({ message: userInput }),
+                hideTypingIndicator();
+
+                for (const msg of intermediateMessages) {
+                    appendMessage(msg, "bot", true);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                appendMessage(finalResponse, "bot");
             });
+    }
 
-            if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
-            }
+    // 타이핑 인디케이터 표시
+    function showTypingIndicator() {
+        const typingContainer = document.createElement("div");
+        typingContainer.className = "message-container bot";
+        typingContainer.id = "typing-indicator";
 
-            const data = await res.json(); // .json()으로 변경
+        const typingBox = document.createElement("div");
+        typingBox.className = "message bot typing";
+        typingBox.innerHTML = `
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        `;
 
-            // 로딩 메시지 제거
-            thinkingMessage.remove();
+        typingContainer.appendChild(typingBox);
+        messages.appendChild(typingContainer);
+        messages.scrollTop = messages.scrollHeight;
+    }
 
-            const intermediateMessages = data.intermediate_messages || [];
-            const finalResponse = data.response || "응답이 없습니다.";
-
-            // 중간 메시지들을 순차적으로 표시
-            for (const msg of intermediateMessages) {
-                appendMessage(msg, "bot", true); // 중간 메시지임을 true로 전달
-                await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초 지연 (조정 가능)
-            }
-
-            // 최종 답변 표시
-            appendMessage(finalResponse, "bot");
-
-        } catch (err) { // 에러 처리
-            // 로딩 메시지 제거
-            if (thinkingMessage && thinkingMessage.parentNode) {
-                thinkingMessage.remove();
-            }
-            appendMessage("답변 처리 중 오류가 발생했습니다.", "bot");
-            console.error('Fetch error:', err);
+    function hideTypingIndicator() {
+        const typingIndicator = document.getElementById("typing-indicator");
+        if (typingIndicator) {
+            typingIndicator.remove();
         }
     }
 });
