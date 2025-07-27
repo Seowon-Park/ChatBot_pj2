@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (isIntermediate) {
             messageBox.classList.add('intermediate-message'); // 중간 메시지 스타일링용 클래스
+            messageBox.classList.add('bot-message', 'info');
         }
         if (isThinking) {
             messageBox.classList.add('thinking-message'); // 로딩 메시지 스타일링용 클래스
