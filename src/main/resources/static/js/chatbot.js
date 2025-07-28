@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             body: JSON.stringify({message: userInput}),
         })
-            .then((res) => res.text())
+            .then((res) => res.json())
             .then(async (data) => {
                 const intermediateMessages = data.intermediate_messages || [];
                 const finalResponse = data.response || "응답이 없습니다.";
