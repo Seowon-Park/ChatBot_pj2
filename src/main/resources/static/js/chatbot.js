@@ -35,27 +35,38 @@ document.addEventListener("DOMContentLoaded", function () {
         if (e.key === "Enter") sendMessage();
     });
 
-    function appendMessage(text, sender) {
+    function appendMessage(text, sender, isIntermediate = false, isThinking = false) {
         const messageContainer = document.createElement("div");
         messageContainer.className = `message-container ${sender}`;
 
         const messageBox = document.createElement("div");
         messageBox.className = `message ${sender}`;
+
+        if (isIntermediate) {
+            messageBox.classList.add('intermediate-message'); // 중간 메시지 스타일링용 클래스
+            messageBox.classList.add('bot-message', 'info');
+        }
+        if (isThinking) {
+            messageBox.classList.add('thinking-message'); // 로딩 메시지 스타일링용 클래스
+        }
+
         messageBox.textContent = text;
 
         messageContainer.appendChild(messageBox);
         messages.appendChild(messageContainer);
         messages.scrollTop = messages.scrollHeight;
+        return messageBox; // 로딩 메시지 제거를 위해 반환
     }
 
     //AI서버 응답 받는 함수
-    function sendMessage() {
+    function sendMessage() { // async 키워드 추가
         const userInput = inputField.value.trim();
-        if (!userInput) return;
+        if (!userInput) {
+            return;
+        }
 
         appendMessage(userInput, "user");
         inputField.value = "";
-
         // 봇이 응답하는 동안 로딩 표시
         showTypingIndicator();// 타이핑 애니메이션 시작
 
@@ -66,17 +77,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 "Content-Type": "application/json",
                 "X-Session-ID": sessionId
             },
-            body: JSON.stringify({ message: userInput }),
+            body: JSON.stringify({message: userInput}),
         })
-            .then((res) => res.text())
-            .then((response) => { //응답받음
-                hideTypingIndicator(); //타이핑 애니메이션 제거
-                appendMessage(response || "응답이 없습니다.", "bot");
-            })
-            .catch((err) => {//에러
-                hideTypingIndicator();//타이핑애니메이션 제거
-                appendMessage("에러 발생", "bot");
-                console.error(err);
+            .then((res) => res.json())
+            .then(async (data) => {
+                const intermediateMessages = data.intermediate_messages || [];
+                const finalResponse = data.response || "응답이 없습니다.";
+
+                hideTypingIndicator();
+
+                for (const msg of intermediateMessages) {
+                    appendMessage(msg, "bot", true);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                appendMessage(finalResponse, "bot");
             });
     }
 
