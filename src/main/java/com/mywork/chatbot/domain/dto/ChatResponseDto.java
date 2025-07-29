@@ -1,29 +1,18 @@
 package com.mywork.chatbot.domain.dto;
-import com.fasterxml.jackson.annotation.JsonProperty;
-//{"answer": "수업 취소는..."}
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+import java.util.List;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class ChatResponseDto {
     private String response;
-
-    @JsonProperty("intermediate_messages")
-    private String[] intermediateMessages;
-
-    public ChatResponseDto() {}
-
-    public String getResponse() {
-        return response;
-    }
-
-    public void setResponse(String response) {
-        this.response = response;
-    }
-
-    public String[] getIntermediateMessages() {
-        return intermediateMessages;
-    }
-
-    public void setIntermediateMessages(String[] intermediateMessages) {
-        this.intermediateMessages = intermediateMessages;
-    }
-
-
+    private List<String> intermediateMessages;
+    private Boolean isFinalAnswer;
 }

@@ -5,9 +5,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mywork.chatbot.domain.dto.ChatResponseDto;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -83,7 +83,8 @@ public class ChatBotService {
                 // 응답이 없거나 상태 코드가 OK가 아닌 경우
                 ChatResponseDto errorDto = new ChatResponseDto();
                 errorDto.setResponse("AI 서버에서 응답을 받을 수 없습니다. 상태 코드: " + response.getStatusCode());
-                errorDto.setIntermediateMessages(new String[]{});
+                errorDto.setIntermediateMessages(Collections.emptyList());
+                errorDto.setIsFinalAnswer(true);
                 return errorDto;
             }
 
@@ -93,7 +94,8 @@ public class ChatBotService {
             // 오류 발생 시에도 ChatResponseDto 객체를 반환
             ChatResponseDto errorDto = new ChatResponseDto();
             errorDto.setResponse("죄송합니다. 현재 서비스에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.");
-            errorDto.setIntermediateMessages(new String[]{});
+            errorDto.setIntermediateMessages(Collections.emptyList());
+            errorDto.setIsFinalAnswer(true);
             return errorDto;
         }
     }
