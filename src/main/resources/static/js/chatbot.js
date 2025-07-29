@@ -7,35 +7,30 @@ document.addEventListener("DOMContentLoaded", function () {
     const sendButton = document.getElementById("chatbot-send");
     const messages = document.getElementById("chatbot-messages");
 
-    // 세션 ID를 한 번만 생성하고 유지
     const sessionId = 'session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    console.log('Generated Session ID:', sessionId); // 디버깅용
 
-    // 챗봇을 처음 열 때 초기 메시지 표시
     let isFirstOpen = true;
+    let lastUserQuestion = "";
+    let lastChatbotResponse = "";
+    const ratedMessageIds = new Set();
 
     toggleButton.addEventListener("click", () => {
         const isHidden = chatbotContainer.style.display === "none" || chatbotContainer.style.display === "";
         chatbotContainer.style.display = isHidden ? "flex" : "none";
 
-        // 처음 열 때 초기 메시지 표시
         if (isHidden && isFirstOpen) {
             showInitialMessage();
             isFirstOpen = false;
         }
     });
 
-    // 초기 메시지 표시 함수
-    function showInitialMessage() {
-        appendMessage("안녕하세요. 패캠 행정문의 챗봇 '우주🌌🧑‍🚀' 입니다. 학번을 말해주세요.", "bot");
-    }
-
     sendButton.addEventListener("click", sendMessage);
     inputField.addEventListener("keydown", (e) => {
         if (e.key === "Enter") sendMessage();
     });
 
-    function appendMessage(text, sender, isIntermediate = false, isThinking = false) {
+    function appendMessage(text, sender, isIntermediate, isThinking, isFinal) {
+
         const messageContainer = document.createElement("div");
         messageContainer.className = `message-container ${sender}`;
 
@@ -43,34 +38,62 @@ document.addEventListener("DOMContentLoaded", function () {
         messageBox.className = `message ${sender}`;
 
         if (isIntermediate) {
-            messageBox.classList.add('intermediate-message'); // 중간 메시지 스타일링용 클래스
+            messageBox.classList.add('intermediate-message');
             messageBox.classList.add('bot-message', 'info');
         }
         if (isThinking) {
-            messageBox.classList.add('thinking-message'); // 로딩 메시지 스타일링용 클래스
+            messageBox.classList.add('thinking-message');
         }
 
         messageBox.textContent = text;
-
         messageContainer.appendChild(messageBox);
         messages.appendChild(messageContainer);
         messages.scrollTop = messages.scrollHeight;
-        return messageBox; // 로딩 메시지 제거를 위해 반환
+
+        if (sender === "bot" && !isIntermediate && !isThinking && isFinal) {
+            const messageId = `msg_${Date.now()}`;
+            messageBox.id = messageId;
+
+            const feedbackContainer = document.createElement("div");
+            feedbackContainer.className = "feedback-buttons";
+
+            const likeButton = document.createElement("button");
+            likeButton.className = "feedback-button like";
+            likeButton.innerHTML = "👍";
+            likeButton.title = "이 답변이 도움이 되었습니다.";
+            likeButton.addEventListener("click", () => sendFeedback(messageId, lastUserQuestion, text, 1, feedbackContainer)); // 1: 좋아요
+
+            const dislikeButton = document.createElement("button");
+            dislikeButton.className = "feedback-button dislike";
+            dislikeButton.innerHTML = "👎";
+            dislikeButton.title = "이 답변이 도움이 되지 않았습니다.";
+            dislikeButton.addEventListener("click", () => sendFeedback(messageId, lastUserQuestion, text, -1, feedbackContainer)); // -1: 싫어요
+
+            feedbackContainer.appendChild(likeButton);
+            feedbackContainer.appendChild(dislikeButton);
+            messageContainer.appendChild(feedbackContainer);
+        }
+
+        return messageBox;
     }
 
-    //AI서버 응답 받는 함수
-    function sendMessage() { // async 키워드 추가
+    function showInitialMessage() {
+        appendMessage("안녕하세요. 패캠 행정문의 챗봇 '우주🌌🧑‍🚀' 입니다. 학번을 말해주세요.", "bot", false, false, false);
+    }
+
+    function sendMessage() {
         const userInput = inputField.value.trim();
         if (!userInput) {
+            appendMessage("학번을 입력해주세요.", "bot", false, false, false);
             return;
         }
 
-        appendMessage(userInput, "user");
+        appendMessage(userInput, "user", false, false, false);
+        lastUserQuestion = userInput;
         inputField.value = "";
-        // 봇이 응답하는 동안 로딩 표시
-        showTypingIndicator();// 타이핑 애니메이션 시작
 
-        //AI서버에 요청
+        showTypingIndicator();
+
         fetch("/chatbot", {
             method: "POST",
             headers: {
@@ -81,17 +104,28 @@ document.addEventListener("DOMContentLoaded", function () {
         })
             .then((res) => res.json())
             .then(async (data) => {
-                const intermediateMessages = data.intermediate_messages || [];
+                const intermediateMessages = data.intermediateMessages || [];
                 const finalResponse = data.response || "응답이 없습니다.";
+                const isFinalAnswerFromServer = data.isFinalAnswer !== undefined ? data.isFinalAnswer : false;
 
                 hideTypingIndicator();
 
                 for (const msg of intermediateMessages) {
-                    appendMessage(msg, "bot", true);
+                    appendMessage(msg, "bot", true, false, false);
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
-                appendMessage(finalResponse, "bot");
+                if (isFinalAnswerFromServer) {
+                    appendMessage(finalResponse, "bot", false, false, true);
+                } else {
+                    appendMessage(finalResponse, "bot important", false, false, false);
+                }
+                lastChatbotResponse = finalResponse;
+            })
+            .catch((error) => {
+                console.error("Fetch error:", error);
+                hideTypingIndicator();
+                appendMessage("챗봇과 통신 중 오류가 발생했습니다. 네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.", "bot", false, false, false);
             });
     }
 
@@ -120,6 +154,50 @@ document.addEventListener("DOMContentLoaded", function () {
         const typingIndicator = document.getElementById("typing-indicator");
         if (typingIndicator) {
             typingIndicator.remove();
+        }
+    }
+
+    async function sendFeedback(messageId, userMsg, botResp, rating, feedbackButtonsContainer) {
+        if (ratedMessageIds.has(messageId)) {
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/feedback", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Session-ID": sessionId,
+                },
+                body: JSON.stringify({
+                    messageId: messageId,
+                    sessionId: sessionId,
+                    userMessage: userMsg,
+                    chatbotResponse: botResp,
+                    rating: rating
+                }),
+            });
+
+            if (response.ok) {
+                ratedMessageIds.add(messageId);
+
+                if (feedbackButtonsContainer) {
+                    feedbackButtonsContainer.innerHTML = '';
+
+                    const feedbackConfirmation = document.createElement("span");
+                    feedbackConfirmation.className = "feedback-confirmation";
+                    feedbackConfirmation.textContent = rating === 1 ? "👍" : "👎";
+                    feedbackButtonsContainer.appendChild(feedbackConfirmation);
+                }
+
+            } else {
+                const errorData = await response.json();
+                console.error("Failed to send feedback:", response.status, errorData);
+                alert("피드백 전송에 실패했습니다. 잠시 후 다시 시도해주세요.");
+            }
+        } catch (error) {
+            console.error("Network error while sending feedback:", error);
+            alert("네트워크 오류로 피드백 전송에 실패했습니다.");
         }
     }
 });
