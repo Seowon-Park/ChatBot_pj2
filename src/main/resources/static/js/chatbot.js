@@ -94,6 +94,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         showTypingIndicator();
 
+        disableInput();      // 입력창 잠금
+        showTypingIndicator(); // 로딩중 ... 표시
+
         fetch("/chatbot", {
             method: "POST",
             headers: {
@@ -115,6 +118,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
+
                 if (isFinalAnswerFromServer && finalResponse.includes("죄송합니다.")) {
                     appendMessage(finalResponse, "bot error-message", false, false, false); // 새로운 CSS 클래스 적용
                 } else if (isFinalAnswerFromServer) {
@@ -128,6 +132,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 console.error("Fetch error:", error);
                 hideTypingIndicator();
                 appendMessage("챗봇과 통신 중 오류가 발생했습니다. 네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.", "bot", false, false, false);
+            })
+            .finally(()=>{
+               enableInput(); //입력창 해제
             });
     }
 
@@ -159,6 +166,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // 답변 피드백(좋아요, 싫어요)
     async function sendFeedback(messageId, userMsg, botResp, rating, feedbackButtonsContainer) {
         if (ratedMessageIds.has(messageId)) {
             return;
@@ -201,5 +209,22 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Network error while sending feedback:", error);
             alert("네트워크 오류로 피드백 전송에 실패했습니다.");
         }
+    }
+    //메세지 창 비활성화
+    function disableInput() {
+        inputField.disabled = true;
+        sendButton.disabled = true;
+        sendButton.classList.add("disabled");
+
+        inputField.dataset.placeholderBackup = inputField.placeholder; // 기존 placeholder 백업
+        inputField.placeholder = "답변을 기다리는 중...";
+    }
+    //메세지 창 활성화
+    function enableInput() {
+        inputField.disabled = false;
+        sendButton.disabled = false;
+        sendButton.classList.remove("disabled");
+
+        inputField.placeholder = inputField.dataset.placeholderBackup || ""; // 원래 placeholder로 복구
     }
 });
