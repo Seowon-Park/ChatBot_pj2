@@ -116,10 +116,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
-                if (isFinalAnswerFromServer) {
+                if (isFinalAnswerFromServer && finalResponse.includes("죄송합니다.")) {
+                    appendMessage(finalResponse, "bot error-message", false, false, false); // 새로운 CSS 클래스 적용
+                } else if (isFinalAnswerFromServer) {
                     appendMessage(finalResponse, "bot", false, false, true);
                 } else {
-                    appendMessage(finalResponse, "bot important", false, false, false);
+                    appendMessage(finalResponse, "bot intermediate", false, false, false);
                 }
                 lastChatbotResponse = finalResponse;
             })
@@ -129,7 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 appendMessage("챗봇과 통신 중 오류가 발생했습니다. 네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.", "bot", false, false, false);
             })
             .finally(()=>{
-               enableInput(); //입력창 해제
+                enableInput(); //입력창 해제
             });
     }
 
